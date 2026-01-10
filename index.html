@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colors Logic, Designs Magic - Web Application Portfolio</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        main: '#2C3E50',
+                        accent: '#E74C3C',
+                        bgLight: '#ECF0F1',
+                        bgDark: '#1a252f',
+                    },
+                    fontFamily: {
+                        sans: ['Helvetica Neue', 'Arial', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+            max-height: 400px;
+            margin: 0 auto;
+        }
+
+        .calc-btn { transition: all 0.1s ease; }
+        .calc-btn:active { transform: scale(0.95); }
+
+        #hero-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; opacity: 0.3;
+        }
+
+        .history-list::-webkit-scrollbar { width: 4px; }
+        .history-list::-webkit-scrollbar-thumb { background-color: #E74C3C; border-radius: 10px; }
+        
+        /* 単位変換用タブのアニメーション */
+        .tab-active { border-bottom: 2px solid #E74C3C; color: #E74C3C; }
+    </style>
+
+    <!-- Application Structure Plan:
+         - 不動産リサーチに役立つ「平米・畳 変換機能」を電卓に統合。
+         - モード切替UI（Tabs）を電卓上部に設置し、UXを向上。
+         - 変換ロジック：1畳 = 1.62㎡（一般的な不動産基準）を使用。
+         - 変換結果も履歴リストに記録。
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="bg-bgLight text-main dark:bg-bgDark dark:text-bgLight transition-colors duration-300 antialiased overflow-x-hidden">
+
+    <!-- Header -->
+    <nav class="fixed w-full z-50 bg-bgLight/90 dark:bg-bgDark/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <span class="font-bold text-2xl tracking-tighter">CL<span class="text-accent">.</span>DM</span>
+                </div>
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    <span id="theme-icon" class="text-xl">☀</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
+        <canvas id="hero-canvas"></canvas>
+        <div class="relative z-10 text-center px-4 max-w-4xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 animate-fade-in-up">
+                Colors <span class="text-accent">Logic</span>,<br>
+                Designs <span class="text-accent">Magic</span>.
+            </h1>
+            <p class="text-lg md:text-xl opacity-0 animate-fade-in-up delay-100 font-light max-w-2xl mx-auto text-gray-600 dark:text-gray-300">
+                色彩検定1級の知識と確かなコーディング技術で、<br>企業の思いを「伝わる」形に。
+            </p>
+            <div class="mt-10 opacity-0 animate-fade-in-up delay-200">
+                <a href="#research-tool" class="px-8 py-3 bg-accent text-white font-bold rounded-lg shadow-lg hover:bg-red-600 transition-all inline-block">
+                    リサーチツールを試す
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Research Tool Section -->
+    <section id="research-tool" class="py-20 bg-bgLight dark:bg-bgDark transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-accent mb-4">Research Utility</h2>
+                <p class="text-gray-600 dark:text-gray-300">
+                    計算機に「面積単位変換」を統合。㎡と畳の変換をスムーズに行えます。
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Info -->
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                        <h3 class="text-xl font-bold mb-4 text-accent">Unit Converter</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+                            不動産情報で欠かせない「平米数」と「畳数」の変換機能です。
+                        </p>
+                        <div class="space-y-2 text-xs text-gray-400">
+                            <p>・計算基準: 1畳 = 1.62㎡</p>
+                            <p>・履歴をクリックで数値を再利用</p>
+                            <p>・変換結果も履歴として保存されます</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculator & Converter -->
+                <div class="lg:col-span-4 flex justify-center">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-2xl w-full max-w-sm border border-gray-100 dark:border-gray-700">
+                        
+                        <!-- Mode Tabs -->
+                        <div class="flex mb-6 border-b border-gray-100 dark:border-gray-700">
+                            <button id="tab-calc" onclick="calc.setMode('calc')" class="flex-1 py-2 text-sm font-bold tab-active transition-all">電卓</button>
+                            <button id="tab-conv" onclick="calc.setMode('conv')" class="flex-1 py-2 text-sm font-bold text-gray-400 transition-all">㎡ ⇄ 畳</button>
+                        </div>
+
+                        <!-- Display Area -->
+                        <div class="mb-6">
+                            <div class="text-right text-gray-400 text-xs h-5 truncate" id="calc-history-display"></div>
+                            <div class="flex items-baseline justify-end">
+                                <div class="text-right text-4xl font-mono font-bold text-main dark:text-white truncate" id="calc-display">0</div>
+                                <div id="unit-label" class="ml-2 text-sm font-bold text-gray-400"></div>
+                            </div>
+                        </div>
+
+                        <!-- Main Pad -->
+                        <div id="calculator-pad" class="grid grid-cols-4 gap-3">
+                            <button class="calc-btn col-span-2 p-4 bg-gray-200 dark:bg-gray-600 rounded-lg font-bold" onclick="calc.clear()">AC</button>
+                            <button class="calc-btn p-4 bg-gray-200 dark:bg-gray-600 rounded-lg font-bold" onclick="calc.delete()">DEL</button>
+                            <button class="calc-btn p-4 bg-accent text-white rounded-lg font-bold" onclick="calc.chooseOperation('÷')">÷</button>
+                            
+                            <button class="calc-btn p-4 bg-gray-100 dark:bg-gray-700 rounded-lg font-bold" onclick="calc.appendNumber('7')">7</button>
+                            <button class="calc-btn p-4 bg-gray-100 dark:bg-gray-700 rounded-lg font-bold" onclick="calc.appendNumber('8')">8</button>
+                            <button class="calc-btn p-4 bg-gray-100 dark:bg-gray-700 rounded-lg font-bold" onclick="calc.appendNumber('9')">9</button>
+                            <button class="calc-btn p-4 bg-accent text-white rounded-lg font-bold" onclick="calc.chooseOperation('×')">×</button>
+                            
+                            <button class="calc-btn p-4 bg-gray-100 dark:bg-gray-700 rounded-lg font-bold" onclick="calc.appendNumber('4')">4</button>
+                            <button class="calc-btn p-4 bg-gray-100 dark:bg-gray-700 rounded-lg font-bold" onclick="calc.appendNumber('5')">5</button>
+                            <button class="calc-btn p-4 bg-gray-100 dark:bg-gray-700 rounded-lg font-bold" onclick="calc.appendNumber('6')">6</button>
+                            <button class="calc-btn p-4 bg-accent text-white rounded-lg font-bold" onclick="calc.chooseOperation('-')">-</button>
+                            
+                            <button class="calc-btn p-4 bg-gray-100 dark:bg-gray-700 rounded-lg font-bold" onclick="calc.appendNumber('1')">1</button>
+                            <button class="calc-btn p-4 bg-gray-100 dark:bg-gray-700 rounded-lg font-bold" onclick="calc.appendNumber('2')">2</button>
+                            <button class="calc-btn p-4 bg-gray-100 dark:bg-gray-700 rounded-lg font-bold" onclick="calc.appendNumber('3')">3</button>
+                            <button class="calc-btn p-4 bg-accent text-white rounded-lg font-bold" onclick="calc.chooseOperation('+')">+</button>
+                            
+                            <button class="calc-btn col-span-2 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg font-bold" onclick="calc.appendNumber('0')">0</button>
+                            <button class="calc-btn p-4 bg-gray-100 dark:bg-gray-700 rounded-lg font-bold" onclick="calc.appendNumber('.')">.</button>
+                            <button id="calc-action-btn" class="calc-btn p-4 bg-main text-white rounded-lg font-bold" onclick="calc.compute()">=</button>
+                        </div>
+
+                        <!-- Converter Options (Hidden by default) -->
+                        <div id="converter-options" class="hidden mt-4 space-y-3">
+                            <button onclick="calc.convert('m2ToTatami')" class="w-full py-3 bg-accent text-white rounded-xl font-bold hover:opacity-90 transition-all">㎡ ➔ 畳にする</button>
+                            <button onclick="calc.convert('tatamiToM2')" class="w-full py-3 bg-main text-white rounded-xl font-bold hover:opacity-90 transition-all">畳 ➔ ㎡にする</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History -->
+                <div class="lg:col-span-4 h-full">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700 h-[500px] flex flex-col">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-700">
+                            <h3 class="text-sm font-bold">History</h3>
+                            <button onclick="calc.clearHistory()" class="text-[10px] text-gray-400 hover:text-accent">Clear All</button>
+                        </div>
+                        <div id="history-list" class="history-list space-y-3 overflow-y-auto flex-grow pr-1">
+                            <p class="text-gray-400 text-xs italic text-center mt-10">履歴はありません</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-main text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="font-bold text-xl mb-4">CL<span class="text-accent">.</span>DM</p>
+            <p class="text-gray-500 text-xs">© 2026 Colors Logic, Designs Magic. Logic Meets Art.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Theme Toggle ---
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const html = document.documentElement;
+
+        const setDarkMode = (isDark) => {
+            if (isDark) {
+                html.classList.add('dark');
+                themeIcon.textContent = '🌙';
+            } else {
+                html.classList.remove('dark');
+                themeIcon.textContent = '☀';
+            }
+        };
+
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            setDarkMode(true);
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const isDark = html.classList.toggle('dark');
+            setDarkMode(isDark);
+            localStorage.theme = isDark ? 'dark' : 'light';
+        });
+
+        // --- Hero Animation (Simplified for performance) ---
+        const canvas = document.getElementById('hero-canvas');
+        const ctx = canvas.getContext('2d');
+        let pts = [];
+        function initHero() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            pts = Array.from({length: 50}, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 1.2,
+                vy: (Math.random() - 0.5) * 1.2
+            }));
+        }
+        function anim() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = '#E74C3C';
+            pts.forEach(p => {
+                p.x += p.vx; p.y += p.vy;
+                if(p.x<0||p.x>canvas.width) p.vx*=-1;
+                if(p.y<0||p.y>canvas.height) p.vy*=-1;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
+            });
+            requestAnimationFrame(anim);
+        }
+        window.addEventListener('resize', initHero);
+        initHero(); anim();
+
+        // --- Multi-Mode Calculator Logic ---
+        class SmartCalculator {
+            constructor(prevEl, currentEl, historyEl, labelEl) {
+                this.prevEl = prevEl;
+                this.currentEl = currentEl;
+                this.historyEl = historyEl;
+                this.labelEl = labelEl;
+                this.mode = 'calc'; // 'calc' or 'conv'
+                this.history = JSON.parse(localStorage.getItem('smart_calc_history')) || [];
+                this.clear();
+                this.renderHistory();
+            }
+
+            setMode(mode) {
+                this.mode = mode;
+                document.getElementById('tab-calc').className = `flex-1 py-2 text-sm font-bold transition-all ${mode==='calc'?'tab-active':'text-gray-400'}`;
+                document.getElementById('tab-conv').className = `flex-1 py-2 text-sm font-bold transition-all ${mode==='conv'?'tab-active':'text-gray-400'}`;
+                
+                const actionBtn = document.getElementById('calc-action-btn');
+                const convOpts = document.getElementById('converter-options');
+                
+                if (mode === 'conv') {
+                    actionBtn.classList.add('hidden');
+                    convOpts.classList.remove('hidden');
+                    this.labelEl.innerText = 'Value';
+                } else {
+                    actionBtn.classList.remove('hidden');
+                    convOpts.classList.add('hidden');
+                    this.labelEl.innerText = '';
+                }
+                this.clear();
+            }
+
+            clear() {
+                this.currentOperand = '';
+                this.previousOperand = '';
+                this.operation = undefined;
+                this.updateDisplay();
+            }
+
+            delete() {
+                this.currentOperand = this.currentOperand.toString().slice(0, -1);
+                this.updateDisplay();
+            }
+
+            appendNumber(number) {
+                if (number === '.' && this.currentOperand.includes('.')) return;
+                this.currentOperand = this.currentOperand.toString() + number.toString();
+                this.updateDisplay();
+            }
+
+            chooseOperation(op) {
+                if (this.mode === 'conv') return;
+                if (this.currentOperand === '') return;
+                if (this.previousOperand !== '') this.compute();
+                this.operation = op;
+                this.previousOperand = this.currentOperand;
+                this.currentOperand = '';
+                this.updateDisplay();
+            }
+
+            compute() {
+                let res;
+                const prev = parseFloat(this.previousOperand);
+                const cur = parseFloat(this.currentOperand);
+                if (isNaN(prev) || isNaN(cur)) return;
+                switch (this.operation) {
+                    case '+': res = prev + cur; break;
+                    case '-': res = prev - cur; break;
+                    case '×': res = prev * cur; break;
+                    case '÷': res = prev / cur; break;
+                    default: return;
+                }
+                this.saveHistory(`${prev} ${this.operation} ${cur}`, res);
+                this.currentOperand = res;
+                this.operation = undefined;
+                this.previousOperand = '';
+                this.updateDisplay();
+            }
+
+            convert(type) {
+                const val = parseFloat(this.currentOperand);
+                if (isNaN(val)) return;
+                let res, label;
+                const TATAMI_FACTOR = 1.62;
+
+                if (type === 'm2ToTatami') {
+                    res = (val / TATAMI_FACTOR).toFixed(2);
+                    this.saveHistory(`${val} ㎡`, `${res} 畳`);
+                    label = '畳';
+                } else {
+                    res = (val * TATAMI_FACTOR).toFixed(2);
+                    this.saveHistory(`${val} 畳`, `${res} ㎡`);
+                    label = '㎡';
+                }
+                this.currentOperand = res;
+                this.updateDisplay();
+                this.labelEl.innerText = label;
+            }
+
+            saveHistory(exp, res) {
+                this.history.unshift({ exp, res, id: Date.now() });
+                if (this.history.length > 20) this.history.pop();
+                localStorage.setItem('smart_calc_history', JSON.stringify(this.history));
+                this.renderHistory();
+            }
+
+            renderHistory() {
+                if (this.history.length === 0) {
+                    this.historyEl.innerHTML = '<p class="text-gray-400 text-xs italic text-center mt-10">履歴はありません</p>';
+                    return;
+                }
+                this.historyEl.innerHTML = this.history.map(i => `
+                    <div onclick="calc.reuse('${i.res}')" class="group bg-gray-50 dark:bg-gray-700/30 p-3 rounded-xl border border-transparent hover:border-accent cursor-pointer transition-all">
+                        <div class="text-[9px] text-gray-400 font-mono">${i.exp} =</div>
+                        <div class="text-sm font-bold text-main dark:text-white group-hover:text-accent">${i.res}</div>
+                    </div>
+                `).join('');
+            }
+
+            reuse(val) {
+                // 数字部分のみ抽出
+                this.currentOperand = val.toString().replace(/[^0-9.]/g, '');
+                this.updateDisplay();
+            }
+
+            clearHistory() {
+                this.history = [];
+                localStorage.removeItem('smart_calc_history');
+                this.renderHistory();
+            }
+
+            updateDisplay() {
+                this.currentEl.innerText = this.currentOperand || '0';
+                this.prevEl.innerText = this.operation ? `${this.previousOperand} ${this.operation}` : '';
+            }
+        }
+
+        const calc = new SmartCalculator(
+            document.getElementById('calc-history-display'),
+            document.getElementById('calc-display'),
+            document.getElementById('history-list'),
+            document.getElementById('unit-label')
+        );
+
+    </script>
+</body>
+</html>
